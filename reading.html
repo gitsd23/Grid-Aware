@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Blynk Live Telemetry Monitor</title>
+    <!-- Tailwind CSS & FontAwesome -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Chart.js for Graphs -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        darkbg: '#0f172a',
+                        cardbg: '#1e293b',
+                        accent: '#38bdf8'
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-darkbg text-slate-100 font-sans min-h-screen flex flex-col items-center justify-center p-6">
+
+    <div class="w-full max-w-4xl space-y-6">
+        
+        <!-- HEADER & STATUS -->
+        <div class="flex flex-col sm:flex-row justify-between items-center bg-cardbg border border-slate-700/60 p-5 rounded-2xl shadow-lg gap-4">
+            <div>
+                <h1 class="text-xl font-bold flex items-center gap-2">
+                    <i class="fa-solid fa-microchip text-sky-400"></i> ESP32 Blynk Live Telemetry
+                </h1>
+                <p class="text-xs text-slate-400 mt-0.5">COER University Transformer Node (Pins: V1, V2, V3, V4)</p>
+            </div>
+            <div class="flex items-center space-x-2 bg-slate-900/80 border border-slate-700 px-3.5 py-1.5 rounded-full">
+                <span class="w-2.5 h-2.5 rounded-full bg-amber-400 animate-pulse" id="statusDot"></span>
+                <span id="statusText" class="text-xs font-medium text-slate-300">Connecting to Blynk...</span>
+            </div>
+        </div>
+
+        <!-- 4 LIVE DATA CARDS & GRAPHS GRID -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            
+            <!-- 1. Temperature (V1) -->
+            <div class="bg-cardbg border border-slate-700/60 rounded-2xl p-5 shadow-lg flex flex-col justify-between">
+                <div class="flex justify-between items-center mb-2">
+                    <span class="text-xs font-semibold uppercase tracking-wider text-slate-400">Temperature (V1)</span>
+                    <i class="fa-solid fa-temperature-half text-amber-400"></i>
+                </div>
+                <div class="flex items-baseline space-x-2">
+                    <h2 id="valTemp" class="text-4xl font-extrabold text-amber-400">--</h2>
+                    <span class="text-xs text-slate-500 font-medium">°C</span>
+                </div>
+                <div class="h-16 mt-4">
+                    <canvas id="chartTemp"></canvas>
+                </div>
+            </div>
+
+            <!-- 2. Vibration (V2) -->
+            <div class="bg-cardbg border border-slate-700/60 rounded-2xl p-5 shadow-lg flex flex-col justify-between">
+                <div class="flex justify-between items-center mb-2">
+                    <span class="text-xs font-semibold uppercase tracking-wider text-slate-400">Vibration (V2)</span>
+                    <i class="fa-solid fa-wave-square text-purple-400"></i>
+                </div>
+                <div class="flex items-baseline space-x-2">
+                    <h2 id="valVibration" class="text-4xl font-extrabold text-purple-400">--</h2>
+                    <span class="text-xs text-slate-500 font-medium">g-force</span>
+                </div>
+                <div class="h-16 mt-4">
+                    <canvas id="chartVibration"></canvas>
+                </div>
+            </div>
+
+            <!-- 3. Current Load (V3) -->
+            <div class="bg-cardbg border border-slate-700/60 rounded-2xl p-5 shadow-lg flex flex-col justify-between">
+                <div class="flex justify-between items-center mb-2">
+                    <span class="text-xs font-semibold uppercase tracking-wider text-slate-400">Current Load (V3)</span>
+                    <i class="fa-solid fa-bolt text-blue-400"></i>
+                </div>
+                <div class="flex items-baseline space-x-2">
+                    <h2 id="valLoad" class="text-4xl font-extrabold text-blue-400">--</h2>
+                    <span class="text-xs text-slate-500 font-medium">Amps</span>
+                </div>
+                <div class="h-16 mt-4">
+                    <canvas id="chartLoad"></canvas>
+                </div>
+            </div>
+
+            <!-- 4. Health Score (V4) -->
+            <div class="bg-cardbg border border-slate-700/60 rounded-2xl p-5 shadow-lg flex flex-col justify-between">
+                <div class="flex justify-between items-center mb-2">
+                    <span class="text-xs font-semibold uppercase tracking-wider text-slate-400">Health Score (V4)</span>
+                    <i class="fa-solid fa-heart-pulse text-sky-400"></i>
+                </div>
+                <div class="flex items-baseline space-x-2">
+                    <h2 id="valHealth" class="text-4xl font-extrabold text-sky-400">--</h2>
+                    <span class="text-xs text-slate-500 font-medium">%</span>
+                </div>
+                <div class="h-16 mt-4">
+                    <canvas id="chartHealth"></canvas>
+                </div>
+            </div>
+
+        </div>
+
+        <div class="text-center">
+            <button onclick="fetchBlynkData()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 px-5 py-2.5 rounded-xl text-xs font-semibold transition">
+                <i class="fa-solid fa-rotate mr-1"></i> Manual Refresh API
+            </button>
+        </div>
+
+    </div>
+
+    <!-- JAVASCRIPT LOGIC -->
+    <script>
+        // -------------------------------------------------------------
+        // APNA BLYNK AUTH TOKEN YAHAN DALEN
+        // -------------------------------------------------------------
+        const BLYNK_AUTH_TOKEN = "o9JDd8mamiDgDY7vPMI3EPI8SYJRDQXb"; 
+
+        let tempChart, vibChart, loadChart, healthChart;
+
+        window.addEventListener('DOMContentLoaded', () => {
+            initCharts();
+            fetchBlynkData();
+            // Har 5 second mein auto fetch karega
+            setInterval(fetchBlynkData, 5000);
+        });
+
+        function initCharts() {
+            const opts = {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: { x: { display: false }, y: { display: false } },
+                elements: { line: { tension: 0.3, borderWidth: 2 }, point: { radius: 0 } }
+            };
+
+            tempChart = new Chart(document.getElementById('chartTemp'), {
+                type: 'line', data: { labels: [], datasets: [{ data: [], borderColor: '#fbbf24', fill: true, backgroundColor: 'rgba(251,191,36,0.05)' }] }, options: opts
+            });
+            vibChart = new Chart(document.getElementById('chartVibration'), {
+                type: 'line', data: { labels: [], datasets: [{ data: [], borderColor: '#c084fc', fill: true, backgroundColor: 'rgba(192,132,252,0.05)' }] }, options: opts
+            });
+            loadChart = new Chart(document.getElementById('chartLoad'), {
+                type: 'line', data: { labels: [], datasets: [{ data: [], borderColor: '#60a5fa', fill: true, backgroundColor: 'rgba(96,165,250,0.05)' }] }, options: opts
+            });
+            healthChart = new Chart(document.getElementById('chartHealth'), {
+                type: 'line', data: { labels: [], datasets: [{ data: [], borderColor: '#38bdf8', fill: true, backgroundColor: 'rgba(56,189,248,0.05)' }] }, options: opts
+            });
+        }
+
+        async function fetchBlynkData() {
+            const statusText = document.getElementById('statusText');
+            const statusDot = document.getElementById('statusDot');
+
+            if (!BLYNK_AUTH_TOKEN || BLYNK_AUTH_TOKEN === "YOUR_BLYNK_AUTH_TOKEN") {
+                statusText.innerText = "Error: Blynk Auth Token missing in code!";
+                statusDot.className = "w-2.5 h-2.5 rounded-full bg-red-500";
+                return;
+            }
+
+            try {
+                // Pin Mapping: v1 (Temp), v2 (Vibration), v3 (Current Load), v4 (Health Score)
+                const url = `https://blynk.cloud/external/api/get?token=${BLYNK_AUTH_TOKEN}&v1&v2&v3&v4`;
+                const response = await fetch(url);
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const data = await response.json();
+
+                if (data !== null && data !== undefined) {
+                    const t = data.v1 !== undefined && data.v1 !== "" ? data.v1 : "--";
+                    const v = data.v2 !== undefined && data.v2 !== "" ? data.v2 : "--";
+                    const l = data.v3 !== undefined && data.v3 !== "" ? data.v3 : "--";
+                    const h = data.v4 !== undefined && data.v4 !== "" ? data.v4 : "--";
+
+                    document.getElementById('valTemp').innerText = t;
+                    document.getElementById('valVibration').innerText = v;
+                    document.getElementById('valLoad').innerText = l;
+                    document.getElementById('valHealth').innerText = h;
+
+                    statusText.innerText = "Live Connected (Blynk Cloud)";
+                    statusDot.className = "w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse";
+
+                    if (t !== "--") pushChart(tempChart, t);
+                    if (v !== "--") pushChart(vibChart, v);
+                    if (l !== "--") pushChart(loadChart, l);
+                    if (h !== "--") pushChart(healthChart, h);
+                }
+            } catch (err) {
+                console.error("Blynk Fetch Error:", err);
+                statusText.innerText = "API Not Found / Offline";
+                statusDot.className = "w-2.5 h-2.5 rounded-full bg-red-500";
+            }
+        }
+
+        function pushChart(chart, val) {
+            const num = parseFloat(val);
+            if (isNaN(num)) return;
+            if (chart.data.labels.length > 12) {
+                chart.data.labels.shift();
+                chart.data.datasets[0].data.shift();
+            }
+            chart.data.labels.push('');
+            chart.data.datasets[0].data.push(num);
+            chart.update('none');
+        }
+    </script>
+</body>
+</html>

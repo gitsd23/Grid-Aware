@@ -1,0 +1,37 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+
+:root {
+    --bg-dark: #0b132b;
+    --bg-card: #1c2541;
+    --bg-sidebar: #0a0f1d;
+    --color-accent: #4cc9f0;
+}
+
+body {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    background-color: var(--bg-dark);
+}
+
+/* Custom dark scrollbar */
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+::-webkit-scrollbar-track {
+    background: #0a0f1d;
+}
+::-webkit-scrollbar-thumb {
+    background: #2a3b5c;
+    border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: #3a5078;
+}
+
+/* Leaflet dark theme map tiles filter */
+.leaflet-layer,
+.leaflet-control-zoom-in,
+.leaflet-control-zoom-out,
+.leaflet-control-attribution {
+    filter: brightness(0.6) invert(1) contrast(3) hue-rotate(200deg) saturate(0.3);
+}
