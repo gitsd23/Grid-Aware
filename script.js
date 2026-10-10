@@ -3,9 +3,9 @@
         // BLYNK CREDENTIALS CONFIGURATION (Yahan apne credentials dalein)
         // ---------------------------------------------------------
         const BLYNK_CONFIG = {
-            TEMPLATE_ID: "TMPL3KnmZUUXG",     // Optional reference
+            TEMPLATE_ID: "TMPL3K......",     // Optional reference
             TEMPLATE_NAME: "GridAware", // Optional reference
-            AUTH_TOKEN: "o9JDd8mamiDgDY7vPMI3EPI8SYJRDQXb"    // <-- Yahan apna actual Auth Token daalein
+            AUTH_TOKEN: "<token here>"    // <-- Yahan apna actual Auth Token daalein
         };
 
         const cityNodes = {
